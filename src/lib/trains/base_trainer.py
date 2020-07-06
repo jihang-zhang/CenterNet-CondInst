@@ -24,9 +24,16 @@ class BaseTrainer(object):
   def __init__(
     self, opt, model, optimizer=None):
     self.opt = opt
+    if opt.amp:
+      from torch.cuda.amp import autocast, GradScaler
+      self.autocast = autocast
+      self.scaler = GradScaler()
+      print('Using Mixed Precision Training...')
     self.optimizer = optimizer
     self.loss_stats, self.loss = self._get_losses(opt)
     self.model_with_loss = ModleWithLoss(model, self.loss)
+    self.nbs = opt.nbs  # nominal batch size
+    self.accumulate = max(round(self.nbs / opt.batch_size), 1)  # accumulate loss before optimizing
 
   def set_device(self, gpus, chunk_sizes, device):
     if len(gpus) > 1:
@@ -58,21 +65,37 @@ class BaseTrainer(object):
     num_iters = len(data_loader) if opt.num_iters < 0 else opt.num_iters
     bar = Bar('{}/{}'.format(opt.task, opt.exp_id), max=num_iters)
     end = time.time()
+
+    self.optimizer.zero_grad()
     for iter_id, batch in enumerate(data_loader):
+      ni = iter_id + num_iters * (epoch - 1)  # number integrated batches (since train start)
       if iter_id >= num_iters:
         break
       data_time.update(time.time() - end)
 
       for k in batch:
         if k != 'meta':
-            batch[k] = batch[k].to(device=opt.device, non_blocking=True)
+          batch[k] = batch[k].to(device=opt.device, non_blocking=True)
 
-      output, loss, loss_stats = model_with_loss(batch)
-      loss = loss.mean()
-      if phase == 'train':
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+      if opt.amp:
+        with self.autocast():
+          output, loss, loss_stats = model_with_loss(batch)
+          loss = loss.mean()
+        if phase == 'train':
+          self.scaler.scale(loss).backward()
+          if ni & self.accumulate == 0:
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
+            self.optimizer.zero_grad()
+      else:
+        output, loss, loss_stats = model_with_loss(batch)
+        loss = loss.mean()
+        if phase == 'train':
+          loss.backward()
+          if ni & self.accumulate == 0:
+            self.optimizer.step()
+            self.optimizer.zero_grad()
+
       batch_time.update(time.time() - end)
       end = time.time()
 

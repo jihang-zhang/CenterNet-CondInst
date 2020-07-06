@@ -8,6 +8,7 @@ import os
 
 import torch
 import torch.utils.data
+from lib.utils.utils import freeze_bn
 from lib.utils.utils import collate
 from opts import opts
 from models.model import create_model, load_model, save_model
@@ -15,6 +16,7 @@ from models.data_parallel import DataParallel
 from logger import Logger
 from datasets.dataset_factory import get_dataset
 from trains.train_factory import train_factory
+from utils.utils import use_mabn
 
 
 def main(opt):
@@ -31,7 +33,20 @@ def main(opt):
   
   print('Creating model...')
   model = create_model(opt.arch, opt.heads, opt.head_conv)
-  optimizer = torch.optim.Adam(model.parameters(), opt.lr)
+  if opt.use_mabn:
+      print('Convert BatchNorm to MABN')
+      use_mabn(model, 'model')
+  if opt.freeze_bn:
+      print('Training with frozen BN...')
+      model.apply(freeze_bn)
+  if opt.freeze_backbone:
+      print('Training with frozen backbone...')
+      model.freeze_backbone()
+  if opt.freeze_head != '':
+      frozen_heads = opt.freeze_head.split(',')
+      print('Training with frozen heads {}'.format(frozen_heads))
+      model.freeze_head(frozen_heads)
+  optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), opt.lr)
   start_epoch = 0
   if opt.load_model != '':
     model, optimizer, start_epoch = load_model(
@@ -46,9 +61,7 @@ def main(opt):
       Dataset(opt, 'val'), 
       batch_size=1,
       collate_fn=collate,
-      shuffle=False,
-      num_workers=1,
-      pin_memory=True
+      shuffle=False
   )
 
   if opt.test:
@@ -61,8 +74,6 @@ def main(opt):
       batch_size=opt.batch_size,
       collate_fn= collate,
       shuffle=True,
-      num_workers=opt.num_workers,
-      pin_memory=True,
       drop_last=True
   )
 

@@ -1,0 +1,1 @@
+python main.py ctdet --exp_id resnest50_fpn --arch smpfpn_resnest50 --use_mabn --batch_size 3 --nbs 18 --lr 1.25e-4 --gpus 0 --print_iter 0 --amp --heatmap_wh --mosaic

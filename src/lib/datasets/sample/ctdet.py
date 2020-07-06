@@ -10,9 +10,14 @@ import cv2
 import os
 from utils.image import flip, color_aug
 from utils.image import get_affine_transform, affine_transform
-from utils.image import gaussian_radius, draw_umich_gaussian, draw_msra_gaussian
+from utils.image import gaussian_radius, gaussian_radius_wh, draw_umich_gaussian, draw_msra_gaussian, draw_truncate_gaussian
 from utils.image import draw_dense_reg
+from utils.image import load_image, augment_hsv, load_mosaic, letterbox, random_affine
+from utils.utils import xyxy2xywh, xywh2xyxy
+import random
 import math
+
+import albumentations as aug
 
 class CTDetDataset(data.Dataset):
   def _coco_box_to_bbox(self, box):
@@ -27,61 +32,80 @@ class CTDetDataset(data.Dataset):
     return border // i
 
   def __getitem__(self, index):
-    img_id = self.images[index]
-    file_name = self.coco.loadImgs(ids=[img_id])[0]['file_name']
-    img_path = os.path.join(self.img_dir, file_name)
-    ann_ids = self.coco.getAnnIds(imgIds=[img_id])
-    anns = self.coco.loadAnns(ids=ann_ids)
-    num_objs = min(len(anns), self.max_objs)
+    # img_id = self.images[index]
+    # file_name = self.coco.loadImgs(ids=[img_id])[0]['file_name']
+    # img_path = os.path.join(self.img_dir, file_name)
+    # ann_ids = self.coco.getAnnIds(imgIds=[img_id])
+    # anns = self.coco.loadAnns(ids=ann_ids)
+    # num_objs = min(len(anns), self.max_objs)
 
-    img = cv2.imread(img_path)
+    # img = cv2.imread(img_path)
 
-    height, width = img.shape[0], img.shape[1]
-    c = np.array([img.shape[1] / 2., img.shape[0] / 2.], dtype=np.float32)
-    if self.opt.keep_res:
-      input_h = (height | self.opt.pad) + 1
-      input_w = (width | self.opt.pad) + 1
-      s = np.array([input_w, input_h], dtype=np.float32)
+    # height, width = img.shape[0], img.shape[1]
+
+    # Load image
+    if self.opt.mosaic:
+      # Load mosaic
+      img, labels = load_mosaic(self, index)
+      shapes = None
     else:
-      s = max(img.shape[0], img.shape[1]) * 1.0
-      input_h, input_w = self.opt.input_h, self.opt.input_w
+      img, labels0, (h0, w0), (h, w) = load_image(self, index)
+
+      # Letterbox
+      img, ratio, pad = letterbox(img, self.img_size, auto=False, scaleup=self.opt.large_scale)
+      shapes = (h0, w0), ((h / h0, w / w0), pad)  # for COCO mAP rescaling
+
+      if labels0.size > 0:
+        # Normalized xywh to pixel xyxy format
+        labels = labels0.copy()
+        labels[:, 1] = ratio[0] * w * (labels0[:, 1] - labels0[:, 3] / 2) + pad[0]  # pad width
+        labels[:, 2] = ratio[1] * h * (labels0[:, 2] - labels0[:, 4] / 2) + pad[1]  # pad height
+        labels[:, 3] = ratio[0] * w * (labels0[:, 1] + labels0[:, 3] / 2) + pad[0]
+        labels[:, 4] = ratio[1] * h * (labels0[:, 2] + labels0[:, 4] / 2) + pad[1]
     
-    flipped = False
     if self.split == 'train':
-      if not self.opt.not_rand_crop:
-        s = s * np.random.choice(np.arange(0.6, 1.4, 0.1))
-        w_border = self._get_border(128, img.shape[1])
-        h_border = self._get_border(128, img.shape[0])
-        c[0] = np.random.randint(low=w_border, high=img.shape[1] - w_border)
-        c[1] = np.random.randint(low=h_border, high=img.shape[0] - h_border)
-      else:
-        sf = self.opt.scale
-        cf = self.opt.shift
-        c[0] += s * np.clip(np.random.randn()*cf, -2*cf, 2*cf)
-        c[1] += s * np.clip(np.random.randn()*cf, -2*cf, 2*cf)
-        s = s * np.clip(np.random.randn()*sf + 1, 1 - sf, 1 + sf)
-      
-      if np.random.random() < self.opt.flip:
-        flipped = True
-        img = img[:, ::-1, :]
-        c[0] =  width - c[0] - 1
+      if not self.opt.mosaic:
+        img, labels = random_affine(img, labels,
+                                    degrees=10.,
+                                    translate=0.1,
+                                    scale=0.5,
+                                    shear=10)
+      if not self.opt.no_color_aug:
+        augment_hsv(img, 0.014, 0.68, 0.36)
+        img = yolov4_aug()(image=img)['image']
+
+    num_objs = len(labels)  # number of labels
+    if num_objs > 0:
+      # convert xyxy to xywh
+      labels[:, 1:5] = xyxy2xywh(labels[:, 1:5])
+
+      # Normalize coordinates 0 - 1
+      labels[:, [2, 4]] /= img.shape[0]  # height
+      labels[:, [1, 3]] /= img.shape[1]  # width
+
+    if self.split == 'train':
+      # random left-right flip
+      lr_flip = True
+      if lr_flip and random.random() < 0.5:
+        img = np.fliplr(img)
+        if num_objs > 0:
+          labels[:, 1] = 1 - labels[:, 1]
+
+      # random up-down flip
+      ud_flip = True
+      if ud_flip and random.random() < 0.5:
+        img = np.flipud(img)
+        if num_objs > 0:
+          labels[:, 2] = 1 - labels[:, 2]
         
 
-    trans_input = get_affine_transform(
-      c, s, 0, [input_w, input_h])
-    inp = cv2.warpAffine(img, trans_input, 
-                         (input_w, input_h),
-                         flags=cv2.INTER_LINEAR)
-    inp = (inp.astype(np.float32) / 255.)
-    if self.split == 'train' and not self.opt.no_color_aug:
-      color_aug(self._data_rng, inp, self._eig_val, self._eig_vec)
-    inp = (inp - self.mean) / self.std
-    inp = inp.transpose(2, 0, 1)
+    img = (img.astype(np.float32) / 255.)
+    img = (img - self.mean) / self.std
+    img = img.transpose(2, 0, 1)
 
-    output_h = input_h // self.opt.down_ratio
-    output_w = input_w // self.opt.down_ratio
+    output_h = img.shape[1] // self.opt.down_ratio
+    output_w = img.shape[2] // self.opt.down_ratio
     num_classes = self.num_classes
-    trans_output = get_affine_transform(c, s, 0, [output_w, output_h])
 
     hm = np.zeros((num_classes, output_h, output_w), dtype=np.float32)
     wh = np.zeros((self.max_objs, 2), dtype=np.float32)
@@ -94,39 +118,45 @@ class CTDetDataset(data.Dataset):
     
     draw_gaussian = draw_msra_gaussian if self.opt.mse_loss else \
                     draw_umich_gaussian
+    if self.opt.heatmap_wh:
+      draw_gaussian = draw_truncate_gaussian
 
     gt_det = []
-    for k in range(num_objs):
-      ann = anns[k]
-      bbox = self._coco_box_to_bbox(ann['bbox'])
-      cls_id = int(self.cat_ids[ann['category_id']])
-      if flipped:
-        bbox[[0, 2]] = width - bbox[[2, 0]] - 1
-      bbox[:2] = affine_transform(bbox[:2], trans_output)
-      bbox[2:] = affine_transform(bbox[2:], trans_output)
-      bbox[[0, 2]] = np.clip(bbox[[0, 2]], 0, output_w - 1)
-      bbox[[1, 3]] = np.clip(bbox[[1, 3]], 0, output_h - 1)
-      h, w = bbox[3] - bbox[1], bbox[2] - bbox[0]
+    for k in range(min(num_objs, self.max_objs)):
+      label = labels[k]
+      bbox = label[1:]
+      cls_id = int(label[0])
+      bbox[[0, 2]] = bbox[[0, 2]] * output_w
+      bbox[[1, 3]] = bbox[[1, 3]] * output_h
+      bbox[0] = np.clip(bbox[0], 0, output_w - 1)
+      bbox[1] = np.clip(bbox[1], 0, output_h - 1)
+      h = bbox[3]
+      w = bbox[2]
+
       if h > 0 and w > 0:
-        radius = gaussian_radius((math.ceil(h), math.ceil(w)))
-        radius = max(0, int(radius))
-        radius = self.opt.hm_gauss if self.opt.mse_loss else radius
         ct = np.array(
-          [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2], dtype=np.float32)
+          [bbox[0], bbox[1]], dtype=np.float32)
         ct_int = ct.astype(np.int32)
-        draw_gaussian(hm[cls_id], ct_int, radius)
+        if self.opt.heatmap_wh:
+          h_radius, w_radius = gaussian_radius_wh((math.ceil(h), math.ceil(w)), 0.54)
+          draw_gaussian(hm[cls_id], ct_int, h_radius, w_radius)
+        else:
+          radius = gaussian_radius((math.ceil(h), math.ceil(w)))
+          radius = max(0, int(radius))
+          radius = self.opt.hm_gauss if self.opt.mse_loss else radius
+          draw_gaussian(hm[cls_id], ct_int, radius)
         wh[k] = 1. * w, 1. * h
         ind[k] = ct_int[1] * output_w + ct_int[0]
         reg[k] = ct - ct_int
         reg_mask[k] = 1
         cat_spec_wh[k, cls_id * 2: cls_id * 2 + 2] = wh[k]
         cat_spec_mask[k, cls_id * 2: cls_id * 2 + 2] = 1
-        if self.opt.dense_wh:
+        if self.opt.dense_wh and not self.opt.heatmap_wh:
           draw_dense_reg(dense_wh, hm.max(axis=0), ct_int, wh[k], radius)
         gt_det.append([ct[0] - w / 2, ct[1] - h / 2, 
                        ct[0] + w / 2, ct[1] + h / 2, 1, cls_id])
     
-    ret = {'input': inp, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind, 'wh': wh}
+    ret = {'input': img, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind, 'wh': wh}
     if self.opt.dense_wh:
       hm_a = hm.max(axis=0, keepdims=True)
       dense_wh_mask = np.concatenate([hm_a, hm_a], axis=0)
@@ -140,6 +170,16 @@ class CTDetDataset(data.Dataset):
     if self.opt.debug > 0 or not self.split == 'train':
       gt_det = np.array(gt_det, dtype=np.float32) if len(gt_det) > 0 else \
                np.zeros((1, 6), dtype=np.float32)
-      meta = {'c': c, 's': s, 'gt_det': gt_det, 'img_id': img_id}
+      meta = {'gt_det': gt_det}
       ret['meta'] = meta
     return ret
+
+
+def yolov4_aug():
+  return aug.Compose([
+    aug.RandomBrightnessContrast(p=0.7),
+    aug.OneOf([
+      aug.GaussNoise(p=1.),
+      aug.ISONoise(p=1.),
+      aug.ImageCompression(quality_lower=70, quality_upper=100, p=0.7)
+      ], p=.7)], p=1)

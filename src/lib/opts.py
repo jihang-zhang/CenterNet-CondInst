@@ -12,8 +12,8 @@ class opts(object):
     # basic experiment setting
     self.parser.add_argument('task', default='ctseg',
                              help='ctdet | ddd | multi_pose | exdet | cetseg')
-    self.parser.add_argument('--dataset', default='coco',
-                             help='coco | kitti | coco_hp | pascal')
+    self.parser.add_argument('--dataset', default='wheat',
+                             help='wheat | coco | kitti | coco_hp | pascal')
     self.parser.add_argument('--exp_id', default='default')
     self.parser.add_argument('--test', action='store_true')
     self.parser.add_argument('--debug', type=int, default=0,
@@ -25,9 +25,9 @@ class opts(object):
     self.parser.add_argument('--demo', default='', 
                              help='path to image/ image folders/ video. '
                                   'or "webcam"')
-    self.parser.add_argument('--load_model', default='../exp/ctseg/default/model_last.pth',
+    self.parser.add_argument('--load_model', default='',
                              help='path to pretrained model')
-    self.parser.add_argument('--resume', action='store_true',default=True,
+    self.parser.add_argument('--resume', action='store_true',default=False,
                              help='resume an experiment. '
                                   'Reloaded the optimizer parameter and '
                                   'set load_model to model_last.pth '
@@ -44,7 +44,7 @@ class opts(object):
                              help='random seed') # from CornerNet
 
     # log
-    self.parser.add_argument('--print_iter', type=int, default=1,
+    self.parser.add_argument('--print_iter', type=int, default=0,
                              help='disable progress bar and print to screen.')
     self.parser.add_argument('--hide_data_time', action='store_true',
                              help='not display time during training.')
@@ -61,7 +61,7 @@ class opts(object):
     self.parser.add_argument('--arch', default='dla_34', 
                              help='model architecture. Currently tested'
                                   'res_18 | res_101 | resdcn_18 | resdcn_101 |'
-                                  'dlav0_34 | dla_34 | hourglass')
+                                  'dlav0_34 | dla_34 | hourglass| smpttf | smpfpn')
     self.parser.add_argument('--head_conv', type=int, default=-1,
                              help='conv layer channels for output head'
                                   '0 for no conv layer'
@@ -69,6 +69,8 @@ class opts(object):
                                   '64 for resnets and 256 for dla.')
     self.parser.add_argument('--down_ratio', type=int, default=4,
                              help='output stride. Currently only supports 4.')
+    self.parser.add_argument('--use_mabn', action='store_true',
+                             help='use MABN.')
 
     # input
     self.parser.add_argument('--input_res', type=int, default=-1, 
@@ -82,9 +84,9 @@ class opts(object):
     # train
     self.parser.add_argument('--lr', type=float, default=1.25e-4, 
                              help='learning rate for batch size 32.')
-    self.parser.add_argument('--lr_step', type=str, default='90,120',
+    self.parser.add_argument('--lr_step', type=str, default='70,90',
                              help='drop learning rate by 10.')
-    self.parser.add_argument('--num_epochs', type=int, default=140,
+    self.parser.add_argument('--num_epochs', type=int, default=100,
                              help='total training epochs.')
     self.parser.add_argument('--batch_size', type=int, default=20,
                              help='batch size')
@@ -97,6 +99,16 @@ class opts(object):
     self.parser.add_argument('--trainval', action='store_true',
                              help='include validation in training and '
                                   'test on test set')
+    self.parser.add_argument('--nbs', type=int, default=18,
+                             help='nominal batch size used for gradient accumulation.')
+    self.parser.add_argument('--amp', action='store_true',
+                             help='using mixed precision training')
+    self.parser.add_argument('--freeze_bn', action='store_true',
+                             help='training with frozen bn')
+    self.parser.add_argument('--freeze_backbone', action='store_true',
+                             help='training with frozen backbone')
+    self.parser.add_argument('--freeze_head', type=str, default='', 
+                             help='training with frozen heads')
 
     # test
     self.parser.add_argument('--flip_test', action='store_true',
@@ -134,6 +146,10 @@ class opts(object):
     self.parser.add_argument('--no_color_aug', action='store_true',
                              help='not use the color augmenation '
                                   'from CornerNet')
+    self.parser.add_argument('--large_scale', action='store_true',
+                             help='use enlarging augmentation')
+    self.parser.add_argument('--mosaic', action='store_true',
+                             help='use mosaic augmentation')
     # multi_pose
     self.parser.add_argument('--aug_rot', type=float, default=0, 
                              help='probability of applying '
@@ -161,6 +177,8 @@ class opts(object):
                              help='loss weight for keypoint local offsets.')
     self.parser.add_argument('--wh_weight', type=float, default=0.1,
                              help='loss weight for bounding box size.')
+    self.parser.add_argument('--heatmap_wh', action='store_true',
+                             help='use heatmap with bbox aspect ratio.')
     # multi_pose
     self.parser.add_argument('--hp_weight', type=float, default=1,
                              help='loss weight for human pose offset.')
@@ -350,9 +368,9 @@ class opts(object):
 
   def init(self, args=''):
     default_dataset_info = {
-      'ctdet': {'default_resolution': [512, 512], 'num_classes': 80, 
-                'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
-                'dataset': 'coco'},
+      'ctdet': {'default_resolution': [640, 640], 'num_classes': 1, 
+                'mean': [0.214556, 0.317253, 0.315290], 'std': [0.193879, 0.238036, 0.245211],
+                'dataset': 'wheat'},
       'ctseg': {'default_resolution': [512, 512], 'num_classes': 80,
               'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
               'dataset': 'coco'},
