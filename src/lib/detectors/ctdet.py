@@ -49,7 +49,7 @@ class CtdetDetector(BaseDetector):
     dets = dets.reshape(1, -1, dets.shape[2])
     dets = ctdet_post_process(
         dets.copy(), [meta['c']], [meta['s']],
-        meta['out_height'], meta['out_width'],*meta['img_size'], self.opt.num_classes)
+        meta['out_height'], meta['out_width'], self.opt.num_classes)
     for j in range(1, self.num_classes + 1):
       dets[0][j] = np.array(dets[0][j], dtype=np.float32).reshape(-1, 5)
       dets[0][j][:, :4] /= scale
