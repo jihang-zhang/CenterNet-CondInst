@@ -17,11 +17,15 @@ class Wheat(data.Dataset):
                    dtype=np.float32).reshape(1, 1, 3)
   std  = np.array([0.193879, 0.238036, 0.245211],
                    dtype=np.float32).reshape(1, 1, 3)
-  img_size = default_resolution[0]
-  mosaic_border = [-img_size // 2, -img_size // 2]
 
   def __init__(self, opt, split):
     super(Wheat, self).__init__()
+    if opt.input_res < 0:
+      self.img_size = default_resolution[0]
+    else:
+      self.img_size = opt.input_res
+    self.mosaic_border = [-self.img_size // 2, -self.img_size // 2]
+
     self.data_dir = os.path.join(opt.data_dir, 'wheat')
     self.img_dir = os.path.join(self.data_dir, 'images')
     if split == 'val':

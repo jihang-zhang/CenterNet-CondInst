@@ -56,6 +56,10 @@ def main(opt):
   trainer = Trainer(opt, model, optimizer)
   trainer.set_device(opt.gpus, opt.chunk_sizes, opt.device)
 
+  trainer.scheduler.last_epoch = start_epoch + 7 # Why +6 ?
+  print(trainer.scheduler.last_epoch)
+  trainer.scheduler.step()
+
   print('Setting up data...')
   val_loader = torch.utils.data.DataLoader(
       Dataset(opt, 'val'), 
@@ -82,7 +86,8 @@ def main(opt):
   for epoch in range(start_epoch + 1, opt.num_epochs + 1):
     mark = epoch if opt.save_all else 'last'
     log_dict_train, _ = trainer.train(epoch, train_loader)
-    logger.write('epoch: {} |'.format(epoch))
+    logger.write('epoch: {} | '.format(epoch))
+    logger.write('LR: {:.7f} | '.format(trainer.optimizer.param_groups[0]['lr']))
     for k, v in log_dict_train.items():
       logger.scalar_summary('train_{}'.format(k), v, epoch)
       logger.write('{} {:8f} | '.format(k, v))
@@ -102,13 +107,6 @@ def main(opt):
       save_model(os.path.join(opt.save_dir, 'model_last.pth'), 
                  epoch, model, optimizer)
     logger.write('\n')
-    if epoch in opt.lr_step:
-      save_model(os.path.join(opt.save_dir, 'model_{}.pth'.format(epoch)), 
-                 epoch, model, optimizer)
-      lr = opt.lr * (0.1 ** (opt.lr_step.index(epoch) + 1))
-      print('Drop LR to', lr)
-      for param_group in optimizer.param_groups:
-          param_group['lr'] = lr
   logger.close()
 
 if __name__ == '__main__':

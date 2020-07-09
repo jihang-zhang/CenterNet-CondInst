@@ -66,10 +66,10 @@ class CTDetDataset(data.Dataset):
     if self.split == 'train':
       if not self.opt.mosaic:
         img, labels = random_affine(img, labels,
-                                    degrees=10.,
-                                    translate=0.1,
-                                    scale=0.5,
-                                    shear=10)
+                                    degrees=self.opt.rotate,
+                                    translate=self.opt.shift,
+                                    scale=self.opt.scale,
+                                    shear=self.opt.shear)
       if not self.opt.no_color_aug:
         augment_hsv(img, 0.014, 0.68, 0.36)
         img = yolov4_aug()(image=img)['image']

@@ -3,3 +3,9 @@ python main.py ctdet --exp_id resnest50_fpn --arch smpfpn_resnest50 --batch_size
 python main.py ctdet --exp_id resnest50_fpn --arch smpfpn_resnest50 --batch_size 3 --nbs 18 --lr 1.25e-4 --gpus 0 --print_iter 0 --amp --heatmap_wh --mosaic --freeze_bn --resume --save_all
 
 python demo.py ctdet --demo '../data/wheat/images/073d83544.jpg'--arch smpfpn_resnest50 --gpus 0 --amp --heatmap_wh --load_model '../exp/ctdet/resnest50_fpn/model_best.pth' --vis_thresh 0.25
+
+python main.py ctdet --exp_id resnest50_fpn_ga --arch smpfpn_resnest50 --batch_size 3 --nbs 30 --lr 1.25e-4 --gpus 0 --print_iter 0 --amp --heatmap_wh --mosaic --freeze_bn --save_all
+python main.py ctdet --exp_id hrnet_32 --arch hrnet_32 --batch_size 2 --nbs 32 --lr 1.25e-4 --gpus 0 --print_iter 0 --amp --heatmap_wh --mosaic --freeze_bn --save_all
+
+python main.py ctdet --exp_id resnest50_unet --arch smpunet_resnest50 --input_res 512 --down_ratio 1 --head_conv 32 --batch_size 8 --nbs 32 --lr 1.25e-4 --gpus 0 --print_iter 0 --amp --heatmap_wh --mosaic --save_all
+python main.py ctdet --exp_id resnest50_unet --arch smpunet_resnest50 --input_res 768 --down_ratio 1 --head_conv 32 --batch_size 3 --nbs 30 --lr 1.25e-4 --gpus 0 --print_iter 0 --amp --heatmap_wh --mosaic --freeze_bn --save_all --resume

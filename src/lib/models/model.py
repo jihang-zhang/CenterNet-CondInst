@@ -14,6 +14,8 @@ import os
 from .networks.large_hourglass import get_large_hourglass_net
 from .networks.smp_ttf import get_pose_net as get_smp_ttf
 from .networks.smp_fpn import get_pose_net as get_smp_fpn
+from .networks.pose_hrnet import get_pose_net as get_pose_net_hrnet
+from .networks.smp_unet import get_pose_net as get_smp_unet
 
 _model_factory = {
   # 'res': get_pose_net, # default Resnet with deconv
@@ -21,14 +23,18 @@ _model_factory = {
   # 'dla': get_dla_dcn,
   # 'resdcn': get_pose_net_dcn,
   'hourglass': get_large_hourglass_net,
+  'hrnet': get_pose_net_hrnet,
   'smpttf': get_smp_ttf,
-  'smpfpn': get_smp_fpn
+  'smpfpn': get_smp_fpn,
+  'smpunet': get_smp_unet
 }
 
 def create_model(arch, heads, head_conv):
-  if arch[:6] in ['smpttf', 'smpfpn']:
-    get_model = _model_factory[arch[:6]]
-    model = get_model(base_name=arch[7:], heads=heads, head_conv=head_conv)
+  if arch[:3] == 'smp':
+    backbone_type = arch[arch.find('_') + 1:]
+    decoder_type = arch[:arch.find('_')]
+    get_model = _model_factory[decoder_type]
+    model = get_model(base_name=backbone_type, heads=heads, head_conv=head_conv)
   else:
     num_layers = int(arch[arch.find('_') + 1:]) if '_' in arch else 0
     arch = arch[:arch.find('_')] if '_' in arch else arch
@@ -77,13 +83,13 @@ def load_model(model, model_path, optimizer=None, resume=False,
     if 'optimizer' in checkpoint:
       optimizer.load_state_dict(checkpoint['optimizer'])
       start_epoch = checkpoint['epoch']
-      start_lr = lr
-      for step in lr_step:
-        if start_epoch >= step:
-          start_lr *= 0.1
-      for param_group in optimizer.param_groups:
-        param_group['lr'] = start_lr
-      print('Resumed optimizer with start lr', start_lr)
+      # start_lr = lr
+      # for step in lr_step:
+      #   if start_epoch >= step:
+      #     start_lr *= 0.1
+      # for param_group in optimizer.param_groups:
+      #   param_group['lr'] = start_lr
+      # print('Resumed optimizer with start lr', start_lr)
     else:
       print('No optimizer parameters in checkpoint.')
   if optimizer is not None:

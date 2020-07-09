@@ -61,7 +61,7 @@ class opts(object):
     self.parser.add_argument('--arch', default='dla_34', 
                              help='model architecture. Currently tested'
                                   'res_18 | res_101 | resdcn_18 | resdcn_101 |'
-                                  'dlav0_34 | dla_34 | hourglass| smpttf | smpfpn')
+                                  'dlav0_34 | dla_34 | hrnet_32 | hourglass| smpttf | smpfpn')
     self.parser.add_argument('--head_conv', type=int, default=-1,
                              help='conv layer channels for output head'
                                   '0 for no conv layer'
@@ -84,7 +84,7 @@ class opts(object):
     # train
     self.parser.add_argument('--lr', type=float, default=1.25e-4, 
                              help='learning rate for batch size 32.')
-    self.parser.add_argument('--lr_step', type=str, default='70,90',
+    self.parser.add_argument('--lr_step', type=str, default='50,80',
                              help='drop learning rate by 10.')
     self.parser.add_argument('--num_epochs', type=int, default=100,
                              help='total training epochs.')
@@ -135,10 +135,13 @@ class opts(object):
     self.parser.add_argument('--shift', type=float, default=0.1,
                              help='when not using random crop'
                                   'apply shift augmentation.')
-    self.parser.add_argument('--scale', type=float, default=0.4,
+    self.parser.add_argument('--scale', type=float, default=0.5,
                              help='when not using random crop'
                                   'apply scale augmentation.')
-    self.parser.add_argument('--rotate', type=float, default=0,
+    self.parser.add_argument('--rotate', type=float, default=10,
+                             help='when not using random crop'
+                                  'apply rotation augmentation.')
+    self.parser.add_argument('--shear', type=float, default=10,
                              help='when not using random crop'
                                   'apply rotation augmentation.')
     self.parser.add_argument('--flip', type = float, default=0.5,
@@ -368,7 +371,7 @@ class opts(object):
 
   def init(self, args=''):
     default_dataset_info = {
-      'ctdet': {'default_resolution': [640, 640], 'num_classes': 1, 
+      'ctdet': {'default_resolution': [1024, 1024], 'num_classes': 1, 
                 'mean': [0.214556, 0.317253, 0.315290], 'std': [0.193879, 0.238036, 0.245211],
                 'dataset': 'wheat'},
       'ctseg': {'default_resolution': [512, 512], 'num_classes': 80,

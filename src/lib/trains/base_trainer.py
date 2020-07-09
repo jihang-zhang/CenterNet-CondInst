@@ -3,7 +3,10 @@ from __future__ import division
 from __future__ import print_function
 
 import time
+import math
+import numpy as np
 import torch
+import torch.optim.lr_scheduler as lr_scheduler
 from progress.bar import Bar
 from models.data_parallel import DataParallel
 from utils.utils import AverageMeter
@@ -30,6 +33,10 @@ class BaseTrainer(object):
       self.scaler = GradScaler()
       print('Using Mixed Precision Training...')
     self.optimizer = optimizer
+    # Scheduler https://arxiv.org/pdf/1812.01187.pdf
+    self.lf = lambda x: (((1 + math.cos(x * math.pi / opt.num_epochs)) / 2) ** 1.0) * 0.9 + 0.1  # cosine
+    self.scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=self.lf)
+
     self.loss_stats, self.loss = self._get_losses(opt)
     self.model_with_loss = ModleWithLoss(model, self.loss)
     self.nbs = opt.nbs  # nominal batch size
@@ -63,6 +70,7 @@ class BaseTrainer(object):
     data_time, batch_time = AverageMeter(), AverageMeter()
     avg_loss_stats = {l: AverageMeter() for l in self.loss_stats}
     num_iters = len(data_loader) if opt.num_iters < 0 else opt.num_iters
+    n_burn = max(3 * num_iters, 1e3)  # burn-in iterations, max(3 epochs, 1k iterations)
     bar = Bar('{}/{}'.format(opt.task, opt.exp_id), max=num_iters)
     end = time.time()
 
@@ -76,6 +84,12 @@ class BaseTrainer(object):
       for k in batch:
         if k != 'meta':
           batch[k] = batch[k].to(device=opt.device, non_blocking=True)
+
+      if ni <= n_burn:
+        xi = [0, n_burn]  # x interp
+        accumulate = max(1, np.interp(ni, xi, [1, self.opt.nbs / self.opt.batch_size]).round())
+        for j, x in enumerate(self.optimizer.param_groups):
+          x['lr'] = np.interp(ni, xi, [0.0, x['initial_lr'] * self.lf(epoch - 1)])
 
       if opt.amp:
         with self.autocast():
@@ -99,9 +113,9 @@ class BaseTrainer(object):
       batch_time.update(time.time() - end)
       end = time.time()
 
-      Bar.suffix = '{phase}: [{0}][{1}/{2}]|Tot: {total:} |ETA: {eta:} '.format(
+      Bar.suffix = '{phase}: [{0}][{1}/{2}]|Tot: {total:} |ETA: {eta:} |LR: {lr:.7f}'.format(
         epoch, iter_id, num_iters, phase=phase,
-        total=bar.elapsed_td, eta=bar.eta_td)
+        total=bar.elapsed_td, eta=bar.eta_td, lr=self.optimizer.param_groups[0]['lr'])
       for l in avg_loss_stats:
         avg_loss_stats[l].update(
           loss_stats[l].mean().item(), batch['input'].size(0))
@@ -122,6 +136,9 @@ class BaseTrainer(object):
         self.save_result(output, batch, results)
       del output, loss, loss_stats
     
+    # Scheduler
+    self.scheduler.step()
+
     bar.finish()
     ret = {k: v.avg for k, v in avg_loss_stats.items()}
     ret['time'] = bar.elapsed_td.total_seconds() / 60.
