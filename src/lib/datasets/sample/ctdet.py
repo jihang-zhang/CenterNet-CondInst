@@ -101,6 +101,7 @@ class CTDetDataset(data.Dataset):
 
     img = (img.astype(np.float32) / 255.)
     img = (img - self.mean) / self.std
+    img = np.ascontiguousarray(img[:, :, ::-1]) # BGR to RGB
     img = img.transpose(2, 0, 1)
 
     output_h = img.shape[1] // self.opt.down_ratio
