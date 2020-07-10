@@ -56,7 +56,7 @@ def main(opt):
   trainer = Trainer(opt, model, optimizer)
   trainer.set_device(opt.gpus, opt.chunk_sizes, opt.device)
 
-  trainer.scheduler.last_epoch = start_epoch + 7 # Why +6 ?
+  trainer.scheduler.last_epoch = start_epoch - 1 # Why +6 ?
   print(trainer.scheduler.last_epoch)
   trainer.scheduler.step()
 

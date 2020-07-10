@@ -137,7 +137,8 @@ class BaseTrainer(object):
       del output, loss, loss_stats
     
     # Scheduler
-    self.scheduler.step()
+    if phase == 'train':
+        self.scheduler.step()
 
     bar.finish()
     ret = {k: v.avg for k, v in avg_loss_stats.items()}
