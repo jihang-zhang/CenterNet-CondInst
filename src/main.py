@@ -8,7 +8,6 @@ import os
 
 import torch
 import torch.utils.data
-from lib.utils.utils import freeze_bn
 from lib.utils.utils import collate
 from opts import opts
 from models.model import create_model, load_model, save_model
@@ -38,7 +37,6 @@ def main(opt):
       use_mabn(model, 'model')
   if opt.freeze_bn:
       print('Training with frozen BN...')
-      model.apply(freeze_bn)
   if opt.freeze_backbone:
       print('Training with frozen backbone...')
       model.freeze_backbone()

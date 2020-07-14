@@ -109,3 +109,8 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+# directory
+validation_notebook
+validation_notebook/Wheat - CenterNet Inference.ipynb
+validation_notebook/wheat_infer_utils.py

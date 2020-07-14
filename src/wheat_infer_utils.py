@@ -8,6 +8,7 @@ import time
 import torch
 import torch.nn as nn
 
+import _init_paths
 from external.nms import soft_nms
 
 # utils/image.py

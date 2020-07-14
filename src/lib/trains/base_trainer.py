@@ -9,7 +9,7 @@ import torch
 import torch.optim.lr_scheduler as lr_scheduler
 from progress.bar import Bar
 from models.data_parallel import DataParallel
-from utils.utils import AverageMeter
+from utils.utils import AverageMeter, freeze_bn
 
 
 class ModleWithLoss(torch.nn.Module):
@@ -59,6 +59,8 @@ class BaseTrainer(object):
     model_with_loss = self.model_with_loss
     if phase == 'train':
       model_with_loss.train()
+      if self.opt.freeze_bn:
+        model_with_loss.apply(freeze_bn)
     else:
       if len(self.opt.gpus) > 1:
         model_with_loss = self.model_with_loss.module

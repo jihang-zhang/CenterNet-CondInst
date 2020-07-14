@@ -10,6 +10,7 @@ python main.py ctdet --exp_id hrnet_32 --arch hrnet_32 --input_res 768 --down_ra
 python main.py ctdet --exp_id resnest50_unet --arch smpunet_resnest50 --input_res 512 --down_ratio 1 --head_conv 32 --batch_size 8 --nbs 32 --lr 1.25e-4 --gpus 0 --print_iter 0 --amp --heatmap_wh --mosaic --save_all
 python main.py ctdet --exp_id resnest50_unet --arch smpunet_resnest50 --input_res 768 --down_ratio 1 --head_conv 32 --batch_size 3 --nbs 30 --lr 1.25e-4 --gpus 0 --print_iter 0 --amp --heatmap_wh --mosaic --freeze_bn --save_all --resume
 
+python main.py ctdet --exp_id resnest50_fpn_baseline --arch smpfpn_resnest50 --scale 0.1 --input_res 1024 --down_ratio 4 --batch_size 3 --nbs 30 --lr 1.25e-4 --gpus 0 --print_iter 0 --amp --freeze_bn --save_all --load_model 'C:/Users/blade/Documents/kaggle/wheat/centernet_condinst_repo/exp/ctdet/resnest50_fpn_ga/model_35.pth' --num_epochs 70
 
 
 python demo.py ctdet --demo '../data/wheat/images/073d83544.jpg'--arch smpfpn_resnest50 --gpus 0 --amp --heatmap_wh --load_model '../exp/ctdet/resnest50_fpn/model_best.pth' --vis_thresh 0.25
