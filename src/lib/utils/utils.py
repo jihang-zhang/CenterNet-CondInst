@@ -31,7 +31,7 @@ class AverageMeter(object):
           self.avg = self.sum / self.count
 
 def freeze_bn(module):
-    if isinstance(module, nn.BatchNorm2d):
+    if isinstance(module, nn.BatchNorm2d) or isinstance(module, nn.BatchNorm1d):
         module.eval()
         # module.weight.requires_grad = False
         # module.bias.requires_grad   = False
