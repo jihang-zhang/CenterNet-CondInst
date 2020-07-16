@@ -14,6 +14,7 @@ from models.model import create_model, load_model, save_model
 from models.data_parallel import DataParallel
 from logger import Logger
 from datasets.dataset_factory import get_dataset
+from datasets.custom_loaders import FastDataLoader
 from trains.train_factory import train_factory
 from utils.utils import use_mabn
 
@@ -59,11 +60,12 @@ def main(opt):
   trainer.scheduler.step()
 
   print('Setting up data...')
-  val_loader = torch.utils.data.DataLoader(
+  val_loader = FastDataLoader(
       Dataset(opt, 'val'), 
       batch_size=1,
       collate_fn=collate,
-      shuffle=False
+      shuffle=False,
+      pin_memory=True
   )
 
   if opt.test:
@@ -71,12 +73,13 @@ def main(opt):
     val_loader.dataset.run_eval(preds, opt.save_dir)
     return
 
-  train_loader = torch.utils.data.DataLoader(
+  train_loader = FastDataLoader(
       Dataset(opt, 'train'), 
       batch_size=opt.batch_size,
       collate_fn= collate,
       shuffle=True,
-      drop_last=True
+      drop_last=True,
+      pin_memory=True
   )
 
   print('Starting training...')
