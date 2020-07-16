@@ -274,7 +274,7 @@ def load_image(self, index):
     img_path = os.path.join(self.img_dir, file_name)
     labels = img_dict['labels']
 
-    img = cv2.imread(img_path)  # BGR
+    img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)  # RGB
     assert img is not None, 'Image Not Found ' + img_path
     h0, w0 = img.shape[:2]  # orig hw
     r = self.img_size / max(h0, w0)  # resize image to img_size
@@ -349,10 +349,10 @@ def load_mosaic(self, index):
     # Augment
     # img4 = img4[s // 2: int(s * 1.5), s // 2:int(s * 1.5)]  # center crop (WARNING, requires box pruning)
     img4, labels4 = random_affine(img4, labels4,
-                                  degrees=10.,
-                                  translate=0.1,
-                                  scale=0.5,
-                                  shear=10,
+                                  degrees=0.,
+                                  translate=0.,
+                                  scale=0.,
+                                  shear=0.,
                                   border=self.mosaic_border)  # border to remove
 
     return img4, labels4
@@ -452,7 +452,7 @@ def random_affine(img, targets=(), degrees=10, translate=.1, scale=.1, shear=10,
         area = w * h
         area0 = (targets[:, 3] - targets[:, 1]) * (targets[:, 4] - targets[:, 2])
         ar = np.maximum(w / (h + 1e-16), h / (w + 1e-16))  # aspect ratio
-        i = (w > 2) & (h > 2) & (area / (area0 * s + 1e-16) > 0.2) & (ar < 20)
+        i = (w > 2) & (h > 2) & (area / (area0 * s + 1e-16) > 0.3) & (ar < 10)
 
         targets = targets[i]
         targets[:, 1:5] = xy[i]

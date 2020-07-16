@@ -115,7 +115,7 @@ class BaseTrainer(object):
       batch_time.update(time.time() - end)
       end = time.time()
 
-      Bar.suffix = '{phase}: [{0}][{1}/{2}]|Tot: {total:} |ETA: {eta:} |LR: {lr:.7f}'.format(
+      Bar.suffix = '{phase}: [{0}][{1}/{2}]|Tot: {total:} |ETA: {eta:} |LR: {lr:.4e}'.format(
         epoch, iter_id, num_iters, phase=phase,
         total=bar.elapsed_td, eta=bar.eta_td, lr=self.optimizer.param_groups[0]['lr'])
       for l in avg_loss_stats:

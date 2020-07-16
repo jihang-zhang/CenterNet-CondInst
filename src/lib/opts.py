@@ -132,16 +132,18 @@ class opts(object):
     self.parser.add_argument('--not_rand_crop', action='store_true',
                              help='not use the random crop data augmentation'
                                   'from CornerNet.')
-    self.parser.add_argument('--shift', type=float, default=0.1,
+    self.parser.add_argument('--crop_size', type=int, default=672,
+                             help='output size of random sized crop augmentation.')
+    self.parser.add_argument('--shift', type=float, default=0.,
                              help='when not using random crop'
                                   'apply shift augmentation.')
-    self.parser.add_argument('--scale', type=float, default=0.5,
+    self.parser.add_argument('--scale', type=float, default=0.,
                              help='when not using random crop'
                                   'apply scale augmentation.')
-    self.parser.add_argument('--rotate', type=float, default=10,
+    self.parser.add_argument('--rotate', type=float, default=12,
                              help='when not using random crop'
                                   'apply rotation augmentation.')
-    self.parser.add_argument('--shear', type=float, default=10,
+    self.parser.add_argument('--shear', type=float, default=5,
                              help='when not using random crop'
                                   'apply rotation augmentation.')
     self.parser.add_argument('--flip', type = float, default=0.5,

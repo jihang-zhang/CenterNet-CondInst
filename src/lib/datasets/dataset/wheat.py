@@ -13,9 +13,9 @@ import torch.utils.data as data
 class Wheat(data.Dataset):
   num_classes = 1
   default_resolution = [1024, 1024]
-  mean = np.array([0.214556, 0.317253, 0.315290],
+  mean = np.array([0.315290, 0.317253, 0.214556],
                    dtype=np.float32).reshape(1, 1, 3)
-  std  = np.array([0.193879, 0.238036, 0.245211],
+  std  = np.array([0.245211, 0.238036, 0.193879],
                    dtype=np.float32).reshape(1, 1, 3)
 
   def __init__(self, opt, split):
@@ -86,7 +86,7 @@ class Wheat(data.Dataset):
         labels.append(yolo_label)
         annotations.append(instance)
       img_dict['annotations'] = annotations
-      img_dict['labels'] = np.array(labels)
+      img_dict['labels'] = np.array(labels, dtype=np.float32)
 
     print('Loaded {} {} samples'.format(split, self.num_samples))
 

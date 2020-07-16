@@ -17,7 +17,7 @@ from utils.utils import xyxy2xywh, xywh2xyxy
 import random
 import math
 
-import albumentations as aug
+import albumentations as A
 
 class CTDetDataset(data.Dataset):
   def _coco_box_to_bbox(self, box):
@@ -44,11 +44,7 @@ class CTDetDataset(data.Dataset):
     # height, width = img.shape[0], img.shape[1]
 
     # Load image
-    if self.opt.mosaic:
-      # Load mosaic
-      img, labels = load_mosaic(self, index)
-      shapes = None
-    else:
+    if self.split != 'train' or random.random() > 0.5:
       img, labels0, (h0, w0), (h, w) = load_image(self, index)
 
       # Letterbox
@@ -62,17 +58,28 @@ class CTDetDataset(data.Dataset):
         labels[:, 2] = ratio[1] * h * (labels0[:, 2] - labels0[:, 4] / 2) + pad[1]  # pad height
         labels[:, 3] = ratio[0] * w * (labels0[:, 1] + labels0[:, 3] / 2) + pad[0]
         labels[:, 4] = ratio[1] * h * (labels0[:, 2] + labels0[:, 4] / 2) + pad[1]
+    else:
+      # Load mosaic
+      img, labels = load_mosaic(self, index)
+      shapes = None
     
     if self.split == 'train':
-      if not self.opt.mosaic:
-        img, labels = random_affine(img, labels,
-                                    degrees=self.opt.rotate,
-                                    translate=self.opt.shift,
-                                    scale=self.opt.scale,
-                                    shear=self.opt.shear)
-      if not self.opt.no_color_aug:
-        augment_hsv(img, 0.014, 0.68, 0.36)
-        img = yolov4_aug()(image=img)['image']
+      augment_func = get_train_transforms(output_size=self.opt.crop_size)
+      augmented = augment_func(**{
+        'image': img,
+        'bboxes': labels[:, 1:5],
+        'category_id': labels[:, 0]
+        })
+      img = augmented['image']
+      labels = np.zeros((len(augmented['category_id']), 5), dtype=np.float32)
+      if len(labels) > 0:
+        labels[:, 1:5] = augmented['bboxes']
+
+      img, labels = random_affine(img, labels,
+                                  degrees=self.opt.rotate,
+                                  translate=self.opt.shift,
+                                  scale=self.opt.scale,
+                                  shear=self.opt.shear)
 
     num_objs = len(labels)  # number of labels
     if num_objs > 0:
@@ -101,7 +108,6 @@ class CTDetDataset(data.Dataset):
 
     img = (img.astype(np.float32) / 255.)
     img = (img - self.mean) / self.std
-    img = np.ascontiguousarray(img[:, :, ::-1]) # BGR to RGB
     img = img.transpose(2, 0, 1)
 
     output_h = img.shape[1] // self.opt.down_ratio
@@ -171,16 +177,39 @@ class CTDetDataset(data.Dataset):
     if self.opt.debug > 0 or not self.split == 'train':
       gt_det = np.array(gt_det, dtype=np.float32) if len(gt_det) > 0 else \
                np.zeros((1, 6), dtype=np.float32)
-      meta = {'gt_det': gt_det}
+      meta = {'gt_det': gt_det, 'labels': labels}
       ret['meta'] = meta
     return ret
 
 
 def yolov4_aug():
-  return aug.Compose([
-    aug.RandomBrightnessContrast(p=0.7),
-    aug.OneOf([
-      aug.GaussNoise(p=1.),
-      aug.ISONoise(p=1.),
-      aug.ImageCompression(quality_lower=70, quality_upper=100, p=0.7)
+  return A.Compose([
+    A.RandomBrightnessContrast(p=0.7),
+    A.OneOf([
+      A.GaussNoise(p=1.),
+      A.ISONoise(p=1.),
+      A.ImageCompression(quality_lower=70, quality_upper=100, p=0.7)
       ], p=.7)], p=1)
+
+
+def get_train_transforms(output_size=768):
+  return A.Compose(
+      [
+          A.RandomSizedCrop(min_max_height=(512, output_size), height=output_size, width=output_size, p=1),
+          A.HueSaturationValue(hue_shift_limit=5, sat_shift_limit=15, val_shift_limit=10, p=0.8),
+          A.RandomBrightnessContrast(brightness_limit=0.05, contrast_limit=0.1, p=0.8),
+          A.OneOf([
+             A.GaussNoise(p=0.9),
+             A.ISONoise(p=0.9)
+          ],p=0.9),
+          A.ToGray(p=0.01),
+          A.Cutout(num_holes=5, max_h_size=54, max_w_size=54, fill_value=114, p=0.7)
+      ], 
+      p=1.0, 
+      bbox_params=A.BboxParams(
+          format='pascal_voc',
+          min_area=0, 
+          min_visibility=0.3,
+          label_fields=['category_id']
+      )
+  )

@@ -14,3 +14,6 @@ python main.py ctdet --exp_id resnest50_fpn_baseline --arch smpfpn_resnest50 --s
 
 
 python demo.py ctdet --demo '../data/wheat/images/073d83544.jpg'--arch smpfpn_resnest50 --gpus 0 --amp --heatmap_wh --load_model '../exp/ctdet/resnest50_fpn/model_best.pth' --vis_thresh 0.25
+
+==============================
+python main.py ctdet --exp_id resnest50_fpn_crop --arch smpfpn_resnest50 --down_ratio 4 --batch_size 8 --nbs 16 --lr 1.25e-4 --gpus 0 --print_iter 0 --amp --heatmap_wh --mosaic --save_all --num_epochs 100 --lr_step '70,90'
