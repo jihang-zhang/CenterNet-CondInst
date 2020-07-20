@@ -90,8 +90,14 @@ def _tranpose_and_gather_feat(feat, ind):
     feat = _gather_feat(feat, ind)
     return feat
 
-def flip_tensor(x):
+def flip_tensor_lr(x):
     return torch.flip(x, [3])
+    # tmp = x.detach().cpu().numpy()[..., ::-1].copy()
+    # return torch.from_numpy(tmp).to(x.device)
+    
+
+def flip_tensor_ud(x):
+    return torch.flip(x, [2])
     # tmp = x.detach().cpu().numpy()[..., ::-1].copy()
     # return torch.from_numpy(tmp).to(x.device)
 
@@ -217,11 +223,11 @@ class BaseDetector(object):
             resized_image, trans_input, (inp_width, inp_height),
             flags=cv2.INTER_LINEAR)
         inp_image = ((inp_image / 255. - self.mean) / self.std).astype(np.float32)
-        inp_image = np.ascontiguousarray(inp_image[:, :, ::-1]) # BGR to RGB
+#         inp_image = np.ascontiguousarray(inp_image[:, :, ::-1]) # BGR to RGB
 
         images = inp_image.transpose(2, 0, 1).reshape(1, 3, inp_height, inp_width)
         if self.opt.flip_test:
-            images = np.concatenate((images, images[:, :, :, ::-1]), axis=0)
+            images = np.concatenate((images, images[:, :, :, ::-1], images[:, :, ::-1, :]), axis=0)
         images = torch.from_numpy(images)
         meta = {'c': c, 's': s, 
                 'out_height': inp_height // self.opt.down_ratio, 
@@ -246,7 +252,7 @@ class BaseDetector(object):
         if isinstance(image_or_path_or_tensor, np.ndarray):
             image = image_or_path_or_tensor
         elif type(image_or_path_or_tensor) == type (''): 
-            image = cv2.imread(image_or_path_or_tensor)
+            image = cv2.cvtColor(cv2.imread(image_or_path_or_tensor), cv2.COLOR_BGR2RGB) # RGB
         else:
             image = image_or_path_or_tensor['image'][0].numpy()
             pre_processed_images = image_or_path_or_tensor
@@ -305,8 +311,8 @@ class CtdetDetector(BaseDetector):
             wh = output['wh']
             reg = output['reg'] if self.opt.reg_offset else None
             if self.opt.flip_test:
-                hm = (hm[0:1] + flip_tensor(hm[1:2])) / 2
-                wh = (wh[0:1] + flip_tensor(wh[1:2])) / 2
+                hm = (hm[0:1] + flip_tensor_lr(hm[1:2]) + flip_tensor_ud(hm[2:3])) / 3
+                wh = (wh[0:1] + flip_tensor_lr(wh[1:2]) + flip_tensor_ud(wh[2:3])) / 3
                 reg = reg[0:1] if reg is not None else None
 
             forward_time = time.time()

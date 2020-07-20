@@ -99,7 +99,7 @@ class opts(object):
     self.parser.add_argument('--trainval', action='store_true',
                              help='include validation in training and '
                                   'test on test set')
-    self.parser.add_argument('--nbs', type=int, default=18,
+    self.parser.add_argument('--nbs', type=int, default=16,
                              help='nominal batch size used for gradient accumulation.')
     self.parser.add_argument('--amp', action='store_true',
                              help='using mixed precision training')
@@ -117,7 +117,7 @@ class opts(object):
                              help='multi scale test augmentation.')
     self.parser.add_argument('--nms', action='store_true',
                              help='run nms in testing.')
-    self.parser.add_argument('--K', type=int, default=100,
+    self.parser.add_argument('--K', type=int, default=256,
                              help='max number of output objects.') 
     self.parser.add_argument('--not_prefetch_test', action='store_true',
                              help='not use parallal data pre-processing.')
@@ -132,7 +132,7 @@ class opts(object):
     self.parser.add_argument('--not_rand_crop', action='store_true',
                              help='not use the random crop data augmentation'
                                   'from CornerNet.')
-    self.parser.add_argument('--crop_size', type=int, default=672,
+    self.parser.add_argument('--crop_size', type=int, default=512,
                              help='output size of random sized crop augmentation.')
     self.parser.add_argument('--shift', type=float, default=0.,
                              help='when not using random crop'
@@ -140,10 +140,10 @@ class opts(object):
     self.parser.add_argument('--scale', type=float, default=0.,
                              help='when not using random crop'
                                   'apply scale augmentation.')
-    self.parser.add_argument('--rotate', type=float, default=12,
+    self.parser.add_argument('--rotate', type=float, default=10,
                              help='when not using random crop'
                                   'apply rotation augmentation.')
-    self.parser.add_argument('--shear', type=float, default=5,
+    self.parser.add_argument('--shear', type=float, default=3,
                              help='when not using random crop'
                                   'apply rotation augmentation.')
     self.parser.add_argument('--flip', type = float, default=0.5,

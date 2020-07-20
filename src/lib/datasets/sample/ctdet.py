@@ -64,11 +64,17 @@ class CTDetDataset(data.Dataset):
       shapes = None
     
     if self.split == 'train':
+      scaler = multi_scale_transforms(self.img_size)
+      scaled = scaler(image=img, bboxes=labels[:, 1:5], category_id=labels[:, 0])
+      img = scaled['image']
+      boxes = scaled['bboxes']
+      cat = scaled['category_id']
+
       augment_func = get_train_transforms(output_size=self.opt.crop_size)
       augmented = augment_func(**{
         'image': img,
-        'bboxes': labels[:, 1:5],
-        'category_id': labels[:, 0]
+        'bboxes': boxes,
+        'category_id': cat
         })
       img = augmented['image']
       labels = np.zeros((len(augmented['category_id']), 5), dtype=np.float32)
@@ -192,24 +198,42 @@ def yolov4_aug():
       ], p=.7)], p=1)
 
 
-def get_train_transforms(output_size=768):
+def multi_scale_transforms(img_size, output_sizes=[512, 768, 1024, 1280, 1536, 1792, 2048]):
+    size = random.choice(output_sizes)
+    scale = size / img_size - 1
+
+    return A.Compose(
+        [   
+            A.RandomScale(scale_limit=(scale, scale), p=1)
+        ], 
+        p=1.0, 
+        bbox_params=A.BboxParams(
+            format='pascal_voc',
+            min_area=0, 
+            min_visibility=0,
+            label_fields=['category_id']
+        )
+    )
+
+
+def get_train_transforms(output_size=512):
   return A.Compose(
       [
-          A.RandomSizedCrop(min_max_height=(512, output_size), height=output_size, width=output_size, p=1),
-          A.HueSaturationValue(hue_shift_limit=5, sat_shift_limit=15, val_shift_limit=10, p=0.8),
-          A.RandomBrightnessContrast(brightness_limit=0.05, contrast_limit=0.1, p=0.8),
+          A.HueSaturationValue(hue_shift_limit=5, sat_shift_limit=30, val_shift_limit=20, p=0.8),
+          A.RandomBrightnessContrast(brightness_limit=0.1, contrast_limit=0.2, p=0.8),
           A.OneOf([
              A.GaussNoise(p=0.9),
              A.ISONoise(p=0.9)
           ],p=0.9),
           A.ToGray(p=0.01),
-          A.Cutout(num_holes=5, max_h_size=54, max_w_size=54, fill_value=114, p=0.7)
+          A.Cutout(num_holes=5, max_h_size=54, max_w_size=54, fill_value=114, p=0.7),
+          A.RandomCrop(height=output_size, width=output_size, p=1),
       ], 
       p=1.0, 
       bbox_params=A.BboxParams(
           format='pascal_voc',
           min_area=0, 
-          min_visibility=0.3,
+          min_visibility=0.2,
           label_fields=['category_id']
       )
   )
