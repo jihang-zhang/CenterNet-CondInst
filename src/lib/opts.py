@@ -11,7 +11,7 @@ class opts(object):
     self.parser = argparse.ArgumentParser()
     # basic experiment setting
     self.parser.add_argument('task', default='ctseg',
-                             help='ctdet | ddd | multi_pose | exdet | cetseg')
+                             help='ctdet | higherdet | ddd | multi_pose | exdet | cetseg')
     self.parser.add_argument('--dataset', default='wheat',
                              help='wheat | coco | kitti | coco_hp | pascal')
     self.parser.add_argument('--exp_id', default='default')
@@ -348,8 +348,12 @@ class opts(object):
                    'wh': 2 if not opt.cat_spec_wh else 2 * opt.num_classes}
       if opt.reg_offset:
         opt.heads.update({'reg': 2})
-      if 'higher' in opt.arch:
-        opt.heads.update({'hm2': opt.num_classes})
+    elif opt.task == 'higherdet':
+      # assert opt.dataset in ['pascal', 'coco']
+      opt.heads = {'hm': opt.num_classes, 'hm2': opt.num_classes,
+                   'wh': 2 if not opt.cat_spec_wh else 2 * opt.num_classes}
+      if opt.reg_offset:
+        opt.heads.update({'reg': 2})
     elif opt.task == 'ctseg':
       opt.heads = {'hm': opt.num_classes,
                    'wh': 2 if not opt.cat_spec_wh else 2 * opt.num_classes,
@@ -376,6 +380,9 @@ class opts(object):
   def init(self, args=''):
     default_dataset_info = {
       'ctdet': {'default_resolution': [1024, 1024], 'num_classes': 1, 
+                'mean': [0.315290, 0.317253, 0.214556], 'std': [0.245211, 0.238036, 0.193879],
+                'dataset': 'wheat'},
+      'higherdet': {'default_resolution': [1024, 1024], 'num_classes': 1, 
                 'mean': [0.315290, 0.317253, 0.214556], 'std': [0.245211, 0.238036, 0.193879],
                 'dataset': 'wheat'},
       'ctseg': {'default_resolution': [512, 512], 'num_classes': 80,

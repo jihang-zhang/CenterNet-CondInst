@@ -5,12 +5,14 @@ from __future__ import print_function
 from .exdet import ExdetDetector
 from .ddd import DddDetector
 from .ctdet import CtdetDetector
+from .higherdet import CtdetDetector
 from .multi_pose import MultiPoseDetector
 from .ctseg import CtsegDetector
 detector_factory = {
   'exdet': ExdetDetector, 
   'ddd': DddDetector,
   'ctdet': CtdetDetector,
+  'higherdet': HigherdetDetector,
   'multi_pose': MultiPoseDetector,
   'ctseg': CtsegDetector
 }
