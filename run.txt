@@ -19,3 +19,4 @@ python demo.py ctdet --demo '../data/wheat/images/073d83544.jpg'--arch smpfpn_re
 python main.py ctdet --exp_id resnest50_fpn_crop --arch smpfpn_resnest50 --down_ratio 4 --batch_size 8 --nbs 16 --lr 1.25e-4 --gpus 0 --print_iter 0 --amp --heatmap_wh --mosaic --save_all --num_epochs 100
 
 python main.py ctdet --exp_id resnest50_fpn_ms_crop --arch smpfpn_resnest50 --down_ratio 4 --batch_size 12 --nbs 12 --lr 0.75e-4 --gpus 0 --print_iter 0 --amp --heatmap_wh --mosaic --save_all --num_epochs 100
+python main.py ctdet --exp_id higher_resnest50_fpn_ms_crop --arch higher_resnest50 --down_ratio 2 --batch_size 8 --nbs 16 --lr 1e-4 --gpus 0 --print_iter 0 --freeze_bn --amp --heatmap_wh --mosaic --save_all --num_epochs 100

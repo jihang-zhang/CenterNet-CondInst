@@ -16,6 +16,7 @@ from .networks.smp_ttf import get_pose_net as get_smp_ttf
 from .networks.smp_fpn import get_pose_net as get_smp_fpn
 from .networks.pose_hrnet import get_pose_net as get_pose_net_hrnet
 from .networks.smp_unet import get_pose_net as get_smp_unet
+from .networks.smp_fpn_higher import get_pose_net as get_smp_fpn_higher
 
 _model_factory = {
   # 'res': get_pose_net, # default Resnet with deconv
@@ -26,11 +27,16 @@ _model_factory = {
   'hrnet': get_pose_net_hrnet,
   'smpttf': get_smp_ttf,
   'smpfpn': get_smp_fpn,
-  'smpunet': get_smp_unet
+  'smpunet': get_smp_unet,
+  'higher': get_smp_fpn_higher
 }
 
 def create_model(arch, heads, head_conv):
-  if arch[:3] == 'smp':
+  if arch[:6] == 'higher':
+    backbone_type = arch[arch.find('_') + 1:]
+    get_model = _model_factory['higher']
+    model = get_model(base_name=backbone_type, heads=heads, head_conv=head_conv)
+  elif arch[:3] == 'smp':
     backbone_type = arch[arch.find('_') + 1:]
     decoder_type = arch[:arch.find('_')]
     get_model = _model_factory[decoder_type]

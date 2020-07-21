@@ -22,9 +22,10 @@ class PoseFPNNet(nn.Module):
         base = smp.FPN(base_name, encoder_weights='imagenet', decoder_dropout=0, decoder_segmentation_channels=64, upsampling=1)
         self.encoder = base.encoder
         self.decoder = base.decoder
-        self.higher = HigherHead(64, 64)
 
         self.heads = heads
+        self.higher = HigherHead(64+self.heads['hm2'], 64)
+
         for head in self.heads:
             classes = self.heads[head]
             fc = nn.Sequential(
@@ -40,13 +41,20 @@ class PoseFPNNet(nn.Module):
                 fill_fc_weights(fc)
             self.__setattr__(head, fc)
 
+        self.heads.pop('hm2', None)
+
         del base
 
     def forward(self, x):
         features = self.encoder(x)
-        x = self.decoder(*features)
+        y = self.decoder(*features)
 
         z = {}
+        z['hm2'] = self.__getattr__('hm2')(y)
+
+        x = torch.cat((y, z['hm2']), 1)
+        x = self.higher(x)
+
         for head in self.heads:
             z[head] = self.__getattr__(head)(x)
         return [z]

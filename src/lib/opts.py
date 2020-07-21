@@ -61,7 +61,7 @@ class opts(object):
     self.parser.add_argument('--arch', default='dla_34', 
                              help='model architecture. Currently tested'
                                   'res_18 | res_101 | resdcn_18 | resdcn_101 |'
-                                  'dlav0_34 | dla_34 | hrnet_32 | hourglass| smpttf | smpfpn')
+                                  'dlav0_34 | dla_34 | hrnet_32 | hourglass| smpttf | smpfpn | higher')
     self.parser.add_argument('--head_conv', type=int, default=-1,
                              help='conv layer channels for output head'
                                   '0 for no conv layer'
@@ -348,6 +348,8 @@ class opts(object):
                    'wh': 2 if not opt.cat_spec_wh else 2 * opt.num_classes}
       if opt.reg_offset:
         opt.heads.update({'reg': 2})
+      if 'higher' in opt.arch:
+        opt.heads.update({'hm2': opt.num_classes})
     elif opt.task == 'ctseg':
       opt.heads = {'hm': opt.num_classes,
                    'wh': 2 if not opt.cat_spec_wh else 2 * opt.num_classes,
@@ -374,7 +376,7 @@ class opts(object):
   def init(self, args=''):
     default_dataset_info = {
       'ctdet': {'default_resolution': [1024, 1024], 'num_classes': 1, 
-                'mean': [0.214556, 0.317253, 0.315290], 'std': [0.193879, 0.238036, 0.245211],
+                'mean': [0.315290, 0.317253, 0.214556], 'std': [0.245211, 0.238036, 0.193879],
                 'dataset': 'wheat'},
       'ctseg': {'default_resolution': [512, 512], 'num_classes': 80,
               'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],

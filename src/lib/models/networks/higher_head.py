@@ -24,10 +24,10 @@ class BasicBlock(nn.Module):
     def __init__(self, inplanes, planes, stride=1, downsample=None):
         super(BasicBlock, self).__init__()
         self.conv1 = conv3x3(inplanes, planes, stride)
-        self.bn1 = nn.BatchNorm2d(planes, momentum=BN_MOMENTUM)
+        self.bn1 = nn.BatchNorm2d(planes)
         self.relu = nn.ReLU(inplace=True)
         self.conv2 = conv3x3(planes, planes)
-        self.bn2 = nn.BatchNorm2d(planes, momentum=BN_MOMENTUM)
+        self.bn2 = nn.BatchNorm2d(planes)
         self.downsample = downsample
         self.stride = stride
 
@@ -63,8 +63,8 @@ class HigherHead(nn.Module):
                 padding=1,
                 output_padding=0,
                 bias=False),
-            self.bn = nn.BatchNorm2d(out_channels),
-            self.relu = nn.ReLU(inplace=True))
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True))
 
         res_layers = []
         for _ in range(4):
