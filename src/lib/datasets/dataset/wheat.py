@@ -7,6 +7,8 @@ from pycocotools.cocoeval import COCOeval
 import numpy as np
 import json
 import os
+import cv2
+from tqdm.auto import tqdm
 
 import torch.utils.data as data
 
@@ -69,7 +71,7 @@ class Wheat(data.Dataset):
 
     print('==> initializing data dictionary...')
     self.data_dict = self.coco.loadImgs(ids=self.images).copy()
-    for img_dict in self.data_dict:
+    for img_dict in tqdm(self.data_dict):
       ann_ids = self.coco.getAnnIds(imgIds=[img_dict['id']])
       annotations = []
       labels = []
@@ -87,6 +89,9 @@ class Wheat(data.Dataset):
         annotations.append(instance)
       img_dict['annotations'] = annotations
       img_dict['labels'] = np.array(labels, dtype=np.float32)
+      if opt.load_to_ram:
+        img_path = os.path.join(self.img_dir, img_dict['file_name'])
+        img_dict['image'] = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB) # RGB
 
     print('Loaded {} {} samples'.format(split, self.num_samples))
 

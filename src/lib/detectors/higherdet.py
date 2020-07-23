@@ -30,8 +30,8 @@ class HigherdetDetector(BaseDetector):
     with torch.no_grad():
       output = self.model(images)[-1]
       hm = output['hm'].sigmoid_()
-      output['hm2'] = F.interpolate((output['hm2']).sigmoid_(), scale_factor=2, mode='bilinear', align_corners=False)
-      output['hm'] = (output['hm'] + output['hm2']) / 2
+      hm2 = F.interpolate((output['hm2']).sigmoid_(), scale_factor=2, mode='bilinear', align_corners=False)
+      hm = (hm + hm2) / 2
       wh = output['wh']
       reg = output['reg'] if self.opt.reg_offset else None
       if self.opt.flip_test:

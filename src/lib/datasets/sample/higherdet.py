@@ -152,15 +152,22 @@ class HigherDetDataset(data.Dataset):
           [bbox[0], bbox[1]], dtype=np.float32)
         ct_int = ct.astype(np.int32)
         if self.opt.heatmap_wh:
-          h_radius, w_radius = gaussian_radius_wh((math.ceil(h), math.ceil(w)), 0.27)
+          h_radius, w_radius = gaussian_radius_wh((math.ceil(h), math.ceil(w)), 0.54)
           draw_gaussian(hm[cls_id], ct_int, h_radius, w_radius)
-          draw_gaussian(hm2[cls_id], ct_int//2, h_radius, w_radius)
+
+          h_radius_2, w_radius_2 = gaussian_radius_wh((math.ceil(h//2), math.ceil(w//2)), 0.54)
+          draw_gaussian(hm2[cls_id], ct_int//2, h_radius_2, w_radius_2)
+          
         else:
           radius = gaussian_radius((math.ceil(h), math.ceil(w)))
           radius = max(0, int(radius))
           radius = self.opt.hm_gauss if self.opt.mse_loss else radius
           draw_gaussian(hm[cls_id], ct_int, radius)
-          draw_gaussian(hm2[cls_id], ct_int//2, radius)
+
+          radius_2 = gaussian_radius((math.ceil(h//2), math.ceil(w//2)))
+          radius_2 = max(0, int(radius_2))
+          radius_2 = self.opt.hm_gauss if self.opt.mse_loss else radius_2
+          draw_gaussian(hm2[cls_id], ct_int//2, radius_2)
 
         wh[k] = 1. * w, 1. * h
         ind[k] = ct_int[1] * output_w + ct_int[0]

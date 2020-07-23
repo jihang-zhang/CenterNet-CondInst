@@ -155,6 +155,9 @@ class opts(object):
                              help='use enlarging augmentation')
     self.parser.add_argument('--mosaic', action='store_true',
                              help='use mosaic augmentation')
+    self.parser.add_argument('--load_to_ram', action='store_true',
+                             help='load images into ram')
+
     # multi_pose
     self.parser.add_argument('--aug_rot', type=float, default=0, 
                              help='probability of applying '

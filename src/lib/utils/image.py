@@ -270,12 +270,16 @@ def color_aug(data_rng, image, eig_val, eig_vec):
 def load_image(self, index):
     # loads 1 image from dataset, returns img, original hw, resized hw
     img_dict = self.data_dict[index]
-    file_name = img_dict['file_name']
-    img_path = os.path.join(self.img_dir, file_name)
-    labels = img_dict['labels']
+    if self.opt.load_to_ram:
+      img = img_dict['image']
+    else:
+      file_name = img_dict['file_name']
+      img_path = os.path.join(self.img_dir, file_name)
+      img = cv2.imread(img_path)
+      assert img is not None, 'Image Not Found ' + img_path
+      img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # RGB
 
-    img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)  # RGB
-    assert img is not None, 'Image Not Found ' + img_path
+    labels = img_dict['labels']
     h0, w0 = img.shape[:2]  # orig hw
     r = self.img_size / max(h0, w0)  # resize image to img_size
     if r != 1:  # always resize down, only resize up if training with augmentation
